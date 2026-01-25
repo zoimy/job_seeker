@@ -3,87 +3,41 @@ import { Integration, ServiceType } from '../types';
 import IntegrationCard from './IntegrationCard';
 import IntegrationModal from './IntegrationModal';
 import { GlassCard } from './GlassUI';
-import { MessageCircle, Mail, Hash, Gamepad2, MessageSquare, Camera, Webhook, Zap, BellRing } from 'lucide-react';
+import { MessageCircle, Mail, Hash, Gamepad2, MessageSquare, Camera, Webhook, Zap, BellRing, Link2 } from 'lucide-react';
+import { integrationService } from '../services/integrationService';
 
 const IntegrationsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalState, setModalState] = useState<{ isOpen: boolean; service: ServiceType | null; mode: 'connect' | 'settings' }>({
     isOpen: false,
     service: null,
     mode: 'connect'
   });
 
-  // Mock initial data load
+  // Load integrations from backend
   useEffect(() => {
-    // Simulating API fetch
-    const mockData: Integration[] = [
-      {
-        id: 'email',
-        name: 'Email',
-        description: 'Receive job alerts directly to your inbox.',
-        status: 'connected',
-        isPremium: false,
-        connectionInfo: { email: 'alex.dev@example.com' },
-        settings: { frequency: 'daily', format: 'html' },
-        lastNotification: new Date(Date.now() - 1000 * 60 * 60 * 2) // 2 hours ago
-      },
-      {
-        id: 'telegram',
-        name: 'Telegram',
-        description: 'Get instant notifications via our Telegram bot.',
-        status: 'disconnected',
-        isPremium: false,
-      },
-      {
-        id: 'slack',
-        name: 'Slack',
-        description: 'Post new job matches to a specific channel.',
-        status: 'disconnected',
-        isPremium: false,
-      },
-      {
-        id: 'discord',
-        name: 'Discord',
-        description: 'Send vacancy alerts to your Discord server.',
-        status: 'disconnected',
-        isPremium: false,
-      },
-      {
-        id: 'whatsapp',
-        name: 'WhatsApp',
-        description: 'Get alerts on your phone via WhatsApp.',
-        status: 'disconnected',
-        isPremium: true,
-      },
-      {
-        id: 'instagram',
-        name: 'Instagram',
-        description: 'Receive DMs about hot new vacancies.',
-        status: 'disconnected',
-        isPremium: true,
-      },
-      {
-        id: 'webhook',
-        name: 'Custom Webhook',
-        description: 'Send JSON payload to your own endpoint.',
-        status: 'disconnected',
-        isPremium: false,
-      },
-    ];
-    setIntegrations(mockData);
+    loadIntegrations();
   }, []);
 
+  const loadIntegrations = async () => {
+    setLoading(true);
+    const data = await integrationService.getIntegrations();
+    setIntegrations(data);
+    setLoading(false);
+  };
+
   const getIcon = (id: string) => {
-    const size = 24;
+    const size = 26;
     const color = "text-white";
     switch(id) {
-      case 'telegram': return <MessageCircle size={size} className="text-blue-400" />;
-      case 'email': return <Mail size={size} className="text-emerald-400" />;
-      case 'slack': return <Hash size={size} className="text-purple-400" />;
-      case 'discord': return <Gamepad2 size={size} className="text-indigo-400" />;
-      case 'whatsapp': return <MessageSquare size={size} className="text-green-400" />;
-      case 'instagram': return <Camera size={size} className="text-pink-400" />;
-      case 'webhook': return <Webhook size={size} className="text-orange-400" />;
+      case 'telegram': return <MessageCircle size={size} className="text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" />;
+      case 'email': return <Mail size={size} className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]" />;
+      case 'slack': return <Hash size={size} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]" />;
+      case 'discord': return <Gamepad2 size={size} className="text-indigo-400 drop-shadow-[0_0_10px_rgba(129,140,248,0.5)]" />;
+      case 'whatsapp': return <MessageSquare size={size} className="text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]" />;
+      case 'instagram': return <Camera size={size} className="text-pink-400 drop-shadow-[0_0_10px_rgba(244,114,182,0.5)]" />;
+      case 'webhook': return <Webhook size={size} className="text-orange-400 drop-shadow-[0_0_10px_rgba(251,146,60,0.5)]" />;
       default: return <Zap size={size} className={color} />;
     }
   };
@@ -98,65 +52,98 @@ const IntegrationsPage: React.FC = () => {
 
   const handleDisconnect = async (serviceId: ServiceType) => {
     if (confirm(`Are you sure you want to disconnect ${serviceId}?`)) {
-      setIntegrations(prev => prev.map(item => 
-        item.id === serviceId ? { ...item, status: 'disconnected', connectionInfo: undefined } : item
-      ));
+      const success = await integrationService.disconnectIntegration(serviceId);
+      if (success) {
+        await loadIntegrations(); // Reload to get updated status
+      } else {
+        alert('Failed to disconnect integration');
+      }
     }
   };
 
   const handleTest = async (serviceId: ServiceType) => {
-    alert(`Sending test notification to ${serviceId}...`);
+    const testButton = document.activeElement as HTMLButtonElement;
+    if (testButton) testButton.disabled = true;
+    
+    const result = await integrationService.testIntegration(serviceId);
+    
+    if (result.success) {
+      alert(`✅ Test notification sent to ${serviceId}! Check your ${serviceId} app.`);
+    } else {
+      alert(`❌ Failed to send test notification: ${result.error || 'Unknown error'}`);
+    }
+    
+    if (testButton) testButton.disabled = false;
   };
 
   const handleSaveModal = async (data: any) => {
     if (!modalState.service) return;
     
-    // Simulate updating backend
-    setIntegrations(prev => prev.map(item => {
-      if (item.id === modalState.service) {
-        if (modalState.mode === 'connect') {
-           return {
-             ...item,
-             status: 'connected',
-             connectionInfo: {
-               username: data.verificationCode ? '@alex_dev' : undefined, // Mock username
-               webhookUrl: data.webhookUrl
-             },
-             lastNotification: new Date()
-           };
-        } else {
-          return { ...item, settings: data.settings };
-        }
+    let result;
+    
+    if (modalState.mode === 'connect') {
+      // Handle connection
+      const serviceId = modalState.service;
+      
+      if (serviceId === 'telegram' && data.chatId) {
+        result = await integrationService.updateIntegration(serviceId, {
+          status: 'connected',
+          connectionInfo: { chatId: data.chatId },
+          settings: data.settings || { frequency: 'instant', format: 'compact' }
+        });
+      } else if (['slack', 'discord', 'webhook'].includes(serviceId) && data.webhookUrl) {
+        result = await integrationService.updateIntegration(serviceId, {
+          status: 'connected',
+          connectionInfo: { webhookUrl: data.webhookUrl },
+          settings: data.settings || { frequency: 'instant', format: 'compact' }
+        });
+      } else if (serviceId === 'email' && data.email) {
+        result = await integrationService.updateIntegration(serviceId, {
+          status: 'connected',
+          connectionInfo: { email: data.email },
+          settings: data.settings || { frequency: 'daily', format: 'html' }
+        });
       }
-      return item;
-    }));
+    } else {
+      // Handle settings update
+      result = await integrationService.updateIntegration(modalState.service, {
+        settings: data.settings
+      });
+    }
+    
+    if (result?.success) {
+      await loadIntegrations(); // Reload to get updated data
+    } else {
+      alert(`Failed to save: ${result?.error || 'Unknown error'}`);
+    }
   };
 
   const activeIntegrations = integrations.filter(i => i.status === 'connected' || i.status === 'error');
   const availableIntegrations = integrations.filter(i => i.status === 'disconnected' || i.status === 'premium');
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-12 animate-in fade-in duration-700 pb-20">
       
       {/* Header */}
-      <GlassCard className="p-8 bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-blue-500/20">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-400/30">
-            <BellRing size={32} className="text-blue-200" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Manage Notification Channels</h1>
-            <p className="text-gray-300">Choose where and how you want to receive your AI-matched job alerts.</p>
-          </div>
+      <GlassCard className="p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-8 border-t border-white/10">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="p-5 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-3xl border border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.15)] relative z-10">
+          <BellRing size={40} className="text-white drop-shadow-lg" />
+        </div>
+        <div className="relative z-10 text-center md:text-left">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Notification Channels</h1>
+          <p className="text-blue-200/70 text-lg max-w-2xl">Connect your favorite platforms to receive instant job alerts powered by AI. Manage your subscriptions and preferences in one place.</p>
         </div>
       </GlassCard>
 
       {/* Active Integrations */}
       {activeIntegrations.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
-            Active Integrations
+        <div className="space-y-5">
+          <h2 className="text-xl font-bold text-white flex items-center gap-3 pl-2">
+            <div className="w-1.5 h-6 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+            Active Channels
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {activeIntegrations.map(integration => (
@@ -175,10 +162,10 @@ const IntegrationsPage: React.FC = () => {
       )}
 
       {/* Available Integrations */}
-      <div>
-        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-           <span className="w-2 h-8 bg-blue-500 rounded-full"></span>
-           Available Integrations
+      <div className="space-y-5">
+        <h2 className="text-xl font-bold text-white flex items-center gap-3 pl-2">
+           <div className="w-1.5 h-6 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+           Available Channels
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {availableIntegrations.map(integration => (

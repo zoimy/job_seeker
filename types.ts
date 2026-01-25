@@ -1,15 +1,32 @@
 export enum ExperienceLevel {
-  INTERN = 'INTERN',
-  JUNIOR = 'JUNIOR',
-  MIDDLE = 'MIDDLE',
-  SENIOR = 'SENIOR',
-  LEAD = 'LEAD'
+  INTERN = 'Intern',
+  JUNIOR = 'Junior',
+  MIDDLE = 'Middle',
+  SENIOR = 'Senior',
+  LEAD = 'Lead',
+  ANY = 'Any' // New
 }
 
 export enum WorkplaceType {
-  REMOTE = 'REMOTE',
-  OFFICE = 'OFFICE',
-  HYBRID = 'HYBRID'
+  REMOTE = 'Remote',
+  OFFICE = 'Office',
+  HYBRID = 'Hybrid',
+  TRAVEL = 'Travel' // New
+}
+
+export enum WorkSchedule {
+  FULL_TIME = 'Full Time',
+  PART_TIME = 'Part Time',
+  SHIFT_WORK = 'Shift Work',
+  FREELANCE = 'Freelance',
+  FLEXIBLE = 'Flexible'
+}
+
+export enum EducationLevel {
+  ANY = 'Any',
+  HIGHER = 'Higher',
+  SECONDARY = 'Secondary',
+  STUDENT = 'Student'
 }
 
 export interface UserProfile {
@@ -17,10 +34,15 @@ export interface UserProfile {
   role: string;
   skills: string[];
   experienceLevel: ExperienceLevel;
+  yearsOfExperience: number; // New
   location: string;
   minSalary: number;
+  perferredCurrency: 'MDL' | 'EUR' | 'USD'; // Note: typo in original 'perferred' maintained or fixed? Let's keep it to avoid breaks if used elsewhere, but ideally fix. I see 'perferredCurrency' in original.
   preferredWorkplace: WorkplaceType[];
+  preferredSchedule: WorkSchedule[]; // New
+  education: EducationLevel; // New
   bio: string;
+  searchPeriodDays?: number;
 }
 
 export interface Vacancy {
@@ -35,7 +57,11 @@ export interface Vacancy {
   salaryMax?: number;
   currency: string;
   workplace: WorkplaceType;
+  schedule?: WorkSchedule; // New
+  minYearsExperience?: number; // New
+  education?: EducationLevel; // New
   postedAt: string;
+  url?: string; // Link to original vacancy
 }
 
 export interface VacancyMatch {
@@ -58,6 +84,7 @@ export interface IntegrationConnectionInfo {
   email?: string;
   channel?: string;
   webhookUrl?: string;
+  chatId?: string; // For Telegram
 }
 
 export interface IntegrationSettings {

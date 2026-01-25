@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+<h1>Test page works!</h1>
+<script>
+  console.log('Script is running');
+  fetch('http://localhost:3000/')
+    .then(r => r.text())
+    .then(html => console.log('Page loads, length:', html.length))
+    .catch(e => console.error('Error:', e));
+</script>
+</body>
+</html>
