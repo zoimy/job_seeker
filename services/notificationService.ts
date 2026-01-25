@@ -1,3 +1,4 @@
+import { getUserId } from './storageService';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
 export interface NotificationPreferences {
@@ -26,7 +27,11 @@ class NotificationServiceClient {
    */
   async getPreferences(): Promise<NotificationPreferences> {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/notifications/preferences`);
+      const response = await fetch(`${BACKEND_URL}/api/notifications/preferences`, {
+          headers: {
+            'x-user-id': getUserId(),
+          }
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -50,7 +55,8 @@ class NotificationServiceClient {
       const response = await fetch(`${BACKEND_URL}/api/notifications/preferences`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         },
         body: JSON.stringify(preferences)
       });
@@ -94,7 +100,8 @@ class NotificationServiceClient {
       const response = await fetch(`${BACKEND_URL}/api/notifications/test-telegram`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         },
         body: JSON.stringify({ chatId })
       });
@@ -147,7 +154,8 @@ class NotificationServiceClient {
       const response = await fetch(`${BACKEND_URL}/api/notifications/scan-now`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         }
       });
       

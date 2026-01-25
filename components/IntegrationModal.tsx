@@ -71,8 +71,8 @@ const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSetti
                 Start the Bot
               </h4>
               <p className="mb-4 text-blue-200/70 leading-relaxed">Open Telegram and start a chat with our bot to initialize the secure connection.</p>
-              <a href="https://t.me/JobMatcherBot" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-white font-medium transition-all shadow-lg shadow-blue-600/20">
-                <ExternalLink size={16} /> Open @JobMatcherBot
+              Open <a href="https://t.me/jobsearch_md_bot" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-xl text-white font-medium transition-all shadow-lg shadow-blue-600/20">
+                <ExternalLink size={16} /> Open @jobsearch_md_bot
               </a>
             </div>
             <div className="space-y-2">

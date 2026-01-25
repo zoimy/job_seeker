@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -8,6 +9,7 @@ import mongoSanitize from 'express-mongo-sanitize';
 import connectDB from './config/db.js';
 import { globalLimiter, corsOptions } from './config/security.js';
 import { errorHandler } from './utils/errorHandler.js';
+import { validateEnv } from './utils/envValidation.js';
 
 // Routes
 import profileRoutes from './routes/profile.js';
@@ -20,13 +22,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Validate Environment
+validateEnv();
+
 // Connect to MongoDB
 connectDB();
 
 const app = express();
 
 // Security Middleware
-app.use(helmet()); // Set security HTTP headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline often needed for some dev tools, refine for prod
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || "http://localhost:5173", "http://localhost:3000"],
+    },
+  },
+})); // Set security HTTP headers
 app.use(cors(corsOptions)); // Secure CORS configuration
 app.use(mongoSanitize()); // Data sanitization against NoSQL query injection
 app.use('/api', globalLimiter); // Rate limiting
@@ -42,13 +57,16 @@ app.use('/api/integrations', integrationRoutes);
 
 // Health check endpoint (for Fly.io)
 app.get('/health', (req, res) => {
-  // Check MongoDB connection connection locally without importing mongoose if possible,
-  // or just return simple status. Given server.js context, we can import mongoose or rely on try/catch
-  // For now simple reliable response
-  res.status(200).json({ 
-    status: 'healthy', 
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
+  // If DB is down, return 503 Service Unavailable
+  const status = dbStatus === 'connected' ? 200 : 503;
+  
+  res.status(status).json({ 
+    status: dbStatus === 'connected' ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV
+    env: process.env.NODE_ENV,
+    database: dbStatus
   });
 });
 

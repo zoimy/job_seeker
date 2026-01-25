@@ -264,7 +264,9 @@ export function NotificationSettings() {
                placeholder="e.g. 123456789"
              />
              <p className="text-xs text-gray-400 mt-2 flex gap-1">
-               Open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">@userinfobot</a>, type /start to get ID.
+                <a href="https://t.me/jobsearch_md_bot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">
+              @jobsearch_md_bot
+            </a>
              </p>
            </div>
 

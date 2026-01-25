@@ -1,81 +1,79 @@
 import mongoose from 'mongoose';
 
 const profileSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
   name: {
     type: String,
-    required: false
+    default: ''
   },
   role: {
     type: String,
-    required: false,
     default: ''
   },
-  skills: {
-    type: [String],
-    default: []
+  bio: {
+    type: String,
+    default: ''
   },
   experienceLevel: {
     type: String,
-    required: false,
-    enum: ['Any', 'Intern', 'Junior', 'Middle', 'Senior', 'Lead', ''],
     default: 'Any'
   },
   yearsOfExperience: {
     type: Number,
-    required: false,
     default: 0
   },
-  location: {
+  education: {
     type: String,
-    default: ''
+    default: 'Any'
   },
+  skills: [{
+    type: String
+  }],
   minSalary: {
     type: Number,
     default: 0
   },
   perferredCurrency: {
     type: String,
-    enum: ['MDL', 'EUR', 'USD'],
     default: 'MDL'
   },
-  preferredWorkplace: {
-    type: [String],
-    enum: ['Remote', 'Office', 'Hybrid', 'Travel'],
-    default: []
-  },
-  preferredSchedule: {
-    type: [String],
-    enum: ['Full Time', 'Part Time', 'Shift Work', 'Freelance', 'Flexible'],
-    default: []
-  },
-  education: {
-    type: String,
-    enum: ['Any', 'Higher', 'Secondary', 'Student', 'bachelors', 'masters', 'phd', 'college', 'none', ''],
-    default: 'Any'
-  },
-  bio: {
+  location: {
     type: String,
     default: ''
   },
+  preferredWorkplace: [{
+    type: String,
+    enum: ['remote', 'office', 'hybrid', 'travel', 'any']
+  }],
+  preferredSchedule: [{
+    type: String,
+    enum: ['full time', 'part time', 'shift work', 'freelance', 'flexible', 'any']
+  }],
   searchPeriodDays: {
     type: Number,
-    default: 7
-  },
-  telegramChatId: {
-    type: String,
-    default: ''
+    default: 1
   },
   notificationsEnabled: {
     type: Boolean,
     default: true
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  telegramChatId: {
+    type: String,
+    default: ''
+  },
+  lastScraped: {
+    type: Date
   }
 }, {
   timestamps: true
 });
+
+// Note: userId already has index: true in field definition above
+// No need for separate index() call to avoid duplicate warning
 
 const Profile = mongoose.model('Profile', profileSchema);
 

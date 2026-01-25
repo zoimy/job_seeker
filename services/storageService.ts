@@ -23,6 +23,17 @@ export const DEFAULT_PROFILE: UserProfile = {
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
+// Helper to get or generate User ID unique to this browser
+export const getUserId = (): string => {
+  const STORAGE_KEY = 'job_tracker_user_id';
+  let id = localStorage.getItem(STORAGE_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEY, id);
+  }
+  return id;
+};
+
 export const storageService = {
   saveUserProfile: async (profile: UserProfile): Promise<void> => {
     try {
@@ -30,6 +41,7 @@ export const storageService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         },
         body: JSON.stringify(profile),
       });
@@ -45,7 +57,11 @@ export const storageService = {
 
   getUserProfile: async (): Promise<UserProfile | null> => {
     try {
-      const response = await fetch(`${BASE_URL}/api/profile`);
+      const response = await fetch(`${BASE_URL}/api/profile`, {
+          headers: {
+            'x-user-id': getUserId(),
+          }
+      });
       if (!response.ok) return null;
       
       const data = await response.json();
@@ -63,7 +79,10 @@ export const storageService = {
   deleteAccount: async (): Promise<boolean> => {
     try {
       const response = await fetch(`${BASE_URL}/api/profile`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'x-user-id': getUserId(),
+        }
       });
       
       if (response.ok) {

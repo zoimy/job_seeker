@@ -1,8 +1,10 @@
 import express from 'express';
 import Profile from '../models/Profile.js';
 import { telegramService } from '../services/telegramService.js';
+import { notificationScheduler } from '../services/notificationScheduler.js';
 import { validate, validators } from '../utils/validation.js';
 import { catchAsync } from '../utils/errorHandler.js';
+import { identifyUser } from '../middleware/identifyUser.js';
 
 const router = express.Router();
 
@@ -20,8 +22,8 @@ const getOrCreateProfile = async () => {
 
 // @route   GET /api/notifications/preferences
 // @desc    Get notification preferences
-router.get('/preferences', catchAsync(async (req, res) => {
-    const profile = await Profile.findOne();
+router.get('/preferences', identifyUser, catchAsync(async (req, res) => {
+    const profile = await Profile.findOne({ userId: req.userId });
     
     // Return default preferences if no profile exists
     if (!profile) {
@@ -54,7 +56,17 @@ const updatePreferences = catchAsync(async (req, res) => {
     // Check if we need to send a test message
     const isTest = req.query.test === 'true';
 
-    const profile = await getOrCreateProfile();
+    // Find or create profile for this user
+    let profile = await Profile.findOne({ userId: req.userId });
+    
+    if (!profile) {
+        // Should generally exist if they are exploring settings, but create if mostly empty
+        profile = new Profile({ 
+            userId: req.userId,
+            role: '', 
+            location: '' 
+        });
+    }
 
     // Update fields
     if (telegramChatId !== undefined) profile.telegramChatId = telegramChatId;
@@ -87,11 +99,11 @@ const updatePreferences = catchAsync(async (req, res) => {
 
 // @route   POST /api/notifications/preferences
 // @desc    Update notification preferences
-router.post('/preferences', validate(validators.preferences), updatePreferences);
+router.post('/preferences', identifyUser, validate(validators.preferences), updatePreferences);
 
 // @route   PUT /api/notifications/preferences
 // @desc    Update notification preferences (alias for POST)
-router.put('/preferences', validate(validators.preferences), updatePreferences);
+router.put('/preferences', identifyUser, validate(validators.preferences), updatePreferences);
 
 // @route   POST /api/notifications/test-telegram
 // @desc    Send test Telegram message
@@ -136,11 +148,15 @@ router.post('/test', async (req, res) => {
 });
 
 // @route   POST /api/notifications/scan-now
-// @desc    Trigger immediate vacancy scan (used after onboarding)
-router.post('/scan-now', async (req, res) => {
+// @desc    Trigger immediate vacancy scan
+router.post('/scan-now', identifyUser, async (req, res) => {
   try {
-    // For now, just return success
-    // In production, this would trigger the notificationScheduler
+    // Trigger the scan asynchronously (don't wait for it to finish)
+    // We pass the specific userId to valid it creates logs correctly, 
+    // though the scheduler currently scans ALL users. 
+    // Optimization: In future, pass req.userId to scan ONLY this user.
+    notificationScheduler.checkNewVacancies().catch(err => console.error(err));
+
     res.json({ 
       success: true,
       message: 'Scan started. You will receive notifications as matches are found.'

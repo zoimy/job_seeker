@@ -28,10 +28,15 @@ const ProfileEditor: React.FC<Props> = ({ profile, onSave, onDelete }) => {
 
   const handleCheckboxChange = (field: 'preferredWorkplace' | 'preferredSchedule', value: string) => {
     setFormData(prev => {
-      const current = prev[field] as string[];
-      if (current.includes(value)) {
-        return { ...prev, [field]: current.filter(item => item !== value) };
+      const current = (prev[field] || []) as string[];
+      // Check if exists (case insensitive)
+      const exists = current.some(item => item.toLowerCase() === value.toLowerCase());
+      
+      if (exists) {
+        // Remove (filter out matches)
+        return { ...prev, [field]: current.filter(item => item.toLowerCase() !== value.toLowerCase()) };
       } else {
+        // Add
         return { ...prev, [field]: [...current, value] };
       }
     });
@@ -170,19 +175,19 @@ const ProfileEditor: React.FC<Props> = ({ profile, onSave, onDelete }) => {
                {Object.values(WorkSchedule).map(schedule => (
                  <label key={schedule} className="flex items-center gap-3 cursor-pointer group">
                    <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-300 shadow-sm ${
-                     formData.preferredSchedule?.includes(schedule) 
+                     (formData.preferredSchedule || []).some(s => s.toLowerCase() === schedule.toLowerCase()) 
                        ? 'bg-blue-600 border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.3)]' 
                        : 'bg-black/20 border-white/10 group-hover:border-white/30 group-hover:bg-white/5'
                    }`}>
-                     {formData.preferredSchedule?.includes(schedule) && <X size={14} className="text-white rotate-45" strokeWidth={3} />}
+                     {(formData.preferredSchedule || []).some(s => s.toLowerCase() === schedule.toLowerCase()) && <X size={14} className="text-white rotate-45" strokeWidth={3} />}
                    </div>
                    <input 
                      type="checkbox" 
                      className="hidden" 
-                     checked={formData.preferredSchedule?.includes(schedule)}
+                     checked={(formData.preferredSchedule || []).some(s => s.toLowerCase() === schedule.toLowerCase())}
                      onChange={() => handleCheckboxChange('preferredSchedule', schedule)}
                    />
-                   <span className={`text-sm transition-colors ${formData.preferredSchedule?.includes(schedule) ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'}`}>{schedule}</span>
+                   <span className={`text-sm transition-colors ${(formData.preferredSchedule || []).some(s => s.toLowerCase() === schedule.toLowerCase()) ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'}`}>{schedule}</span>
                  </label>
                ))}
              </div>
@@ -197,19 +202,19 @@ const ProfileEditor: React.FC<Props> = ({ profile, onSave, onDelete }) => {
                {Object.values(WorkplaceType).map(type => (
                  <label key={type} className="flex items-center gap-3 cursor-pointer group">
                    <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-300 shadow-sm ${
-                     formData.preferredWorkplace?.includes(type) 
+                     (formData.preferredWorkplace || []).some(w => w.toLowerCase() === type.toLowerCase()) 
                        ? 'bg-purple-600 border-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.3)]' 
                        : 'bg-black/20 border-white/10 group-hover:border-white/30 group-hover:bg-white/5'
                    }`}>
-                     {formData.preferredWorkplace?.includes(type) && <X size={14} className="text-white rotate-45" strokeWidth={3} />}
+                     {(formData.preferredWorkplace || []).some(w => w.toLowerCase() === type.toLowerCase()) && <X size={14} className="text-white rotate-45" strokeWidth={3} />}
                    </div>
                    <input 
                      type="checkbox" 
                      className="hidden" 
-                     checked={formData.preferredWorkplace?.includes(type)}
+                     checked={(formData.preferredWorkplace || []).some(w => w.toLowerCase() === type.toLowerCase())}
                      onChange={() => handleCheckboxChange('preferredWorkplace', type)}
                    />
-                   <span className={`text-sm transition-colors ${formData.preferredWorkplace?.includes(type) ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'}`}>{type}</span>
+                   <span className={`text-sm transition-colors ${(formData.preferredWorkplace || []).some(w => w.toLowerCase() === type.toLowerCase()) ? 'text-white' : 'text-gray-400 group-hover:text-gray-300'}`}>{type}</span>
                  </label>
                ))}
              </div>

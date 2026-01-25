@@ -165,7 +165,7 @@ export function OnboardingStep3Notifications({
                    <div className="bg-black/20 p-4 rounded-xl text-sm text-blue-100/80 border border-white/5">
                       <p className="mb-2 font-medium">To receive messages:</p>
                       <ol className="space-y-1.5 list-decimal list-inside text-xs">
-                        <li>Open <a href="https://t.me/JobMatcherBot" target="_blank" className="text-blue-400 hover:underline font-bold">@JobMatcherBot</a></li>
+                        <li>Start your chat with <a href="https://t.me/jobsearch_md_bot" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline font-bold">@jobsearch_md_bot</a></li>
                         <li>Click <strong>Start</strong></li>
                         <li>Get your ID from <a href="https://t.me/userinfobot" target="_blank" className="text-blue-400 hover:underline">@userinfobot</a></li>
                       </ol>

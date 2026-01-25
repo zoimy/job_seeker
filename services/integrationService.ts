@@ -1,4 +1,5 @@
 import { Integration, ServiceType, IntegrationSettings } from '../types';
+import { getUserId } from './storageService'; // Added import
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -11,7 +12,11 @@ class IntegrationServiceClient {
    */
   async getIntegrations(): Promise<Integration[]> {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/integrations`);
+      const response = await fetch(`${BACKEND_URL}/api/integrations`, {
+        headers: {
+          'x-user-id': getUserId(),
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -28,7 +33,11 @@ class IntegrationServiceClient {
    */
   async getIntegration(serviceId: ServiceType): Promise<Integration | null> {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/integrations/${serviceId}`);
+      const response = await fetch(`${BACKEND_URL}/api/integrations/${serviceId}`, {
+        headers: {
+            'x-user-id': getUserId(),
+        }
+      });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -50,7 +59,8 @@ class IntegrationServiceClient {
       const response = await fetch(`${BACKEND_URL}/api/integrations/${serviceId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         },
         body: JSON.stringify(updates)
       });
@@ -74,7 +84,10 @@ class IntegrationServiceClient {
   async disconnectIntegration(serviceId: ServiceType): Promise<boolean> {
     try {
       const response = await fetch(`${BACKEND_URL}/api/integrations/${serviceId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'x-user-id': getUserId(),
+        }
       });
 
       if (!response.ok) {
@@ -97,7 +110,8 @@ class IntegrationServiceClient {
       const response = await fetch(`${BACKEND_URL}/api/integrations/${serviceId}/test`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         }
       });
 

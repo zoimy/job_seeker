@@ -63,10 +63,45 @@ export const validators = {
       .isArray()
       .withMessage('Should be an array'),
 
+    body('preferredSchedule')
+      .optional()
+      .isArray()
+      .withMessage('Should be an array'),
+
+    body('bio')
+      .optional()
+      .isString()
+      .trim()
+      .isLength({ max: 2000 }),
+
+    body('experienceLevel')
+      .optional()
+      .isString()
+      .trim(),
+
+    body('yearsOfExperience')
+      .optional()
+      .isNumeric(),
+
+    body('education')
+      .optional()
+      .isString()
+      .trim(),
+
+    body('searchPeriodDays')
+      .optional()
+      .isInt({ min: 1, max: 90 }),
+
+    body('perferredCurrency')
+      .optional()
+      .isString()
+      .trim()
+      .isLength({ max: 10 }),
+
     body('telegramChatId')
       .optional()
       .isString()
-      .matches(/^\d+$/)
+      .matches(/^\d*$/) // Allow empty string or digits
       .withMessage('Invalid Telegram Chat ID format')
   ],
 

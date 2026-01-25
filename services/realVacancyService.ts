@@ -1,4 +1,5 @@
 import { UserProfile, VacancyMatch, ExperienceLevel, WorkplaceType, WorkSchedule, EducationLevel } from '../types';
+import { getUserId } from './storageService';
 
 /**
  * Service for fetching real vacancies from backend scraper
@@ -26,6 +27,7 @@ export class RealVacancyService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-user-id': getUserId(),
         },
         body: JSON.stringify({
           query: cleanQuery,
