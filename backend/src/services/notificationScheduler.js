@@ -3,6 +3,7 @@ import Vacancy from '../models/Vacancy.js';
 import Profile from '../models/Profile.js';
 import RabotaMdScraper from '../scrapers/rabotaMdScraper.js';
 import { telegramService } from './telegramService.js';
+import { analyzeSkillMatch } from '../utils/skillTaxonomy.js';
 
 class NotificationScheduler {
   constructor() {
@@ -206,50 +207,117 @@ class NotificationScheduler {
 
     const vTitle = (vacancy.title || '').toLowerCase();
     const vDesc = (vacancy.description || '').toLowerCase();
+    const vFullText = `${vTitle} ${vDesc}`;
     const pRole = (profile.role || '').toLowerCase();
-
-    // 1. Role Match (40 pts)
-    if (vTitle.includes(pRole) || pRole.includes(vTitle)) {
-        score += 40;
-    } else {
-        const roleWords = pRole.split(' ');
-        const matchCount = roleWords.filter(w => vTitle.includes(w)).length;
-        if (matchCount > 0) score += (matchCount / roleWords.length) * 30;
-    }
-
-    // 2. Skills Match (30 pts)
     const pSkills = profile.skills || [];
-    if (pSkills.length > 0) {
-        let skillMatches = 0;
-        pSkills.forEach(skill => {
-            if (skill && (vDesc.includes(skill.toLowerCase()) || vTitle.includes(skill.toLowerCase()))) {
-                skillMatches++;
-            }
-        });
-        const matchRatio = Math.min(skillMatches / pSkills.length, 1);
-        score += matchRatio * 30;
-    }
 
-    // 3. Location (10 pts)
-    if (profile.location && vacancy.location && vacancy.location.toLowerCase().includes(profile.location.toLowerCase())) {
-        score += 10;
-    }
-
-    // 4. Experience (20 pts)
-    const level = (profile.experienceLevel || 'middle').toLowerCase();
+    // 1. SKILLS MATCH (50 points) - MOST IMPORTANT
+    let skillScore = 0;
+    let skillAnalysis = { matched: [], incompatible: [], matchRatio: 0 };
     
-    // Negative Check for Junior
-    if (level === 'junior' && (vTitle.includes('senior') || vTitle.includes('lead'))) {
-        score -= 20; // Penalize mismatch
-    } else if (level === 'senior' && (vTitle.includes('junior') || vTitle.includes('trainee'))) {
-        score -= 20;
+    if (pSkills.length > 0) {
+      skillAnalysis = analyzeSkillMatch(pSkills, vFullText);
+      const { matched, incompatible, matchRatio } = skillAnalysis;
+      
+      // Base skill score from match ratio
+      skillScore = matchRatio * 50;
+      
+      // CRITICAL: If NO skills match at all, instant fail
+      if (matched.length === 0) {
+        return 0; // Zero compatibility
+      }
+      
+      // PENALTY: Incompatible tech stacks (e.g., React profile vs PHP vacancy)
+      if (incompatible.length > 0) {
+        const penalty = Math.min(incompatible.length * 15, 40); // Heavy penalty
+        skillScore -= penalty;
+        
+        // If more incompatibilities than matches, likely wrong stack
+        if (incompatible.length >= matched.length) {
+          skillScore = Math.max(skillScore - 20, 0);
+        }
+      }
+      
+      // BONUS: High skill overlap (>=60% match)
+      if (matchRatio >= 0.6) {
+        skillScore += 10;
+      }
     } else {
-         // Bonus for match
-         if (vTitle.includes(level) || vDesc.includes(level)) score += 20;
-         else score += 10; // Default
+      // No skills defined - give minimal score to allow any vacancy
+      skillScore = 25;
+    }
+    
+    score += Math.max(0, skillScore);
+
+    // 2. ROLE MATCH (30 points)
+    let roleScore = 0;
+    
+    if (pRole) {
+      // Exact or strong match
+      if (vTitle.includes(pRole)) {
+        roleScore = 30;
+      } else if (pRole.includes(vTitle) && vTitle.length > 3) {
+        roleScore = 25;
+      } else {
+        // Partial word match
+        const roleWords = pRole.split(' ').filter(w => w.length > 2);
+        const matchedWords = roleWords.filter(w => vTitle.includes(w) || vDesc.includes(w));
+        
+        if (matchedWords.length > 0) {
+          roleScore = (matchedWords.length / roleWords.length) * 20;
+        }
+      }
+      
+      // PENALTY: Level mismatch for junior/senior
+      const level = (profile.experienceLevel || '').toLowerCase();
+      if (level === 'junior' && (vTitle.includes('senior') || vTitle.includes('lead') || vTitle.includes('principal'))) {
+        roleScore -= 15;
+      } else if ((level === 'senior' || level === 'lead') && (vTitle.includes('junior') || vTitle.includes('trainee') || vTitle.includes('intern'))) {
+        roleScore -= 15;
+      }
+    }
+    
+    score += Math.max(0, roleScore);
+
+    // 3. LOCATION (10 points)
+    if (profile.location && vacancy.location) {
+      const pLoc = profile.location.toLowerCase();
+      const vLoc = vacancy.location.toLowerCase();
+      
+      if (vLoc.includes(pLoc) || pLoc.includes(vLoc)) {
+        score += 10;
+      } else if (vLoc.includes('remote') || vLoc.includes('anywhere')) {
+        score += 5; // Remote is flexible
+      }
     }
 
-    return Math.max(0, Math.min(score, maxScore));
+    // 4. EXPERIENCE LEVEL (10 points)
+    const level = (profile.experienceLevel || '').toLowerCase();
+    const years = profile.yearsOfExperience || 0;
+    
+    if (level && level !== 'any') {
+      // Exact level match
+      if (vTitle.includes(level) || vDesc.includes(level)) {
+        score += 10;
+      } 
+      // Years of experience alignment
+      else if (years > 0) {
+        if ((years >= 5 && (vTitle.includes('senior') || vDesc.includes('senior'))) ||
+            (years < 2 && (vTitle.includes('junior') || vDesc.includes('junior'))) ||
+            (years >= 2 && years < 5 && (vTitle.includes('middle') || vDesc.includes('mid-level')))) {
+          score += 7;
+        } else {
+          score += 3; // Partial credit
+        }
+      }
+    }
+
+    // FINAL ADJUSTMENTS
+    // Ensure score is within bounds
+    score = Math.max(0, Math.min(score, maxScore));
+    
+    // Round to integer for cleaner display
+    return Math.round(score);
   }
 }
 

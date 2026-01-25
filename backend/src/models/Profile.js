@@ -70,6 +70,12 @@ const profileSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  minMatchScore: {
+    type: Number,
+    default: 50,
+    min: 0,
+    max: 100
+  },
   lastScraped: {
     type: Date
   }
