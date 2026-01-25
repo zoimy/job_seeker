@@ -1,33 +1,29 @@
 import express from 'express';
 import Profile from '../models/Profile.js';
+import { validate, validators } from '../utils/validation.js';
+import { catchAsync } from '../utils/errorHandler.js';
 
 const router = express.Router();
 
 // @route   GET /api/profile
 // @desc    Get user profile
 // @access  Public (for MVP)
-router.get('/', async (req, res) => {
-  try {
-    let profile = await Profile.findOne();
-    
-    // Return empty object if no profile yet, or default structure
-    if (!profile) {
-      return res.json({ profile: null });
-    }
-
-    res.json({ profile });
-  } catch (error) {
-    console.error('Error fetching profile:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
+router.get('/', catchAsync(async (req, res) => {
+  let profile = await Profile.findOne();
+  
+  // Return empty object if no profile yet, or default structure
+  if (!profile) {
+    return res.json({ profile: null });
   }
-});
+
+  res.json({ profile });
+}));
 
 // @route   POST /api/profile
 // @desc    Update or create user profile
 // @access  Public
-router.post('/', async (req, res) => {
-  try {
-    const profileData = req.body;
+router.post('/', validate(validators.profile), catchAsync(async (req, res) => {
+  const profileData = req.body;
 
     // Use findOneAndUpdate with upsert: true to maintain a single profile
     // The query is empty {} to find ANY document (assuming singleton)
@@ -44,7 +40,7 @@ router.post('/', async (req, res) => {
         profile = await Profile.findByIdAndUpdate(
             profile._id, 
             { $set: profileData }, 
-            { new: true }
+            { new: true, runValidators: true } // Added runValidators
         );
     } else {
         // Create new
@@ -55,17 +51,12 @@ router.post('/', async (req, res) => {
         success: true, 
         profile 
     });
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-});
+}));
 
 // @route   DELETE /api/profile
 // @desc    Delete user profile and all data
 // @access  Public
-router.delete('/', async (req, res) => {
-  try {
+router.delete('/', catchAsync(async (req, res) => {
     // Delete Profile
     await Profile.deleteMany({});
     
@@ -75,10 +66,6 @@ router.delete('/', async (req, res) => {
     await Vacancy.deleteMany({});
 
     res.json({ success: true, message: 'Account deleted' });
-  } catch (error) {
-    console.error('Error deleting profile:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-});
+}));
 
 export default router;

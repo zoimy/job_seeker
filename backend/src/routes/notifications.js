@@ -1,13 +1,26 @@
 import express from 'express';
 import Profile from '../models/Profile.js';
 import { telegramService } from '../services/telegramService.js';
+import { validate, validators } from '../utils/validation.js';
+import { catchAsync } from '../utils/errorHandler.js';
 
 const router = express.Router();
 
+// Helper to get or create profile
+const getOrCreateProfile = async () => {
+    let profile = await Profile.findOne();
+    if (!profile) {
+        profile = new Profile({
+            role: '', 
+            location: ''
+        });
+    }
+    return profile;
+};
+
 // @route   GET /api/notifications/preferences
 // @desc    Get notification preferences
-router.get('/preferences', async (req, res) => {
-  try {
+router.get('/preferences', catchAsync(async (req, res) => {
     const profile = await Profile.findOne();
     
     // Return default preferences if no profile exists
@@ -32,29 +45,16 @@ router.get('/preferences', async (req, res) => {
         telegramChatId: profile.telegramChatId || ''
       }
     });
-  } catch (error) {
-    console.error('Error fetching preferences:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-});
+}));
 
-// @route   POST /api/notifications/preferences
-// @desc    Update notification preferences
-router.post('/preferences', async (req, res) => {
-  try {
+// Handle preference updates (shared logic)
+const updatePreferences = catchAsync(async (req, res) => {
     const { telegramEnabled, telegramChatId } = req.body;
     
     // Check if we need to send a test message
     const isTest = req.query.test === 'true';
 
-    let profile = await Profile.findOne();
-    if (!profile) {
-        // If profile doesn't exist yet, we create a placeholder one to store prefs
-        profile = new Profile({
-            role: '', // Empty defaults
-            location: ''
-        });
-    }
+    const profile = await getOrCreateProfile();
 
     // Update fields
     if (telegramChatId !== undefined) profile.telegramChatId = telegramChatId;
@@ -83,54 +83,24 @@ router.post('/preferences', async (req, res) => {
             telegramChatId: profile.telegramChatId
         }
     });
-
-  } catch (error) {
-    console.error('Error updating preferences:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
 });
+
+// @route   POST /api/notifications/preferences
+// @desc    Update notification preferences
+router.post('/preferences', validate(validators.preferences), updatePreferences);
 
 // @route   PUT /api/notifications/preferences
 // @desc    Update notification preferences (alias for POST)
-router.put('/preferences', async (req, res) => {
-  try {
-    const { telegramEnabled, telegramChatId } = req.body;
-
-    let profile = await Profile.findOne();
-    if (!profile) {
-        profile = new Profile({
-            role: '',
-            location: ''
-        });
-    }
-
-    if (telegramChatId !== undefined) profile.telegramChatId = telegramChatId;
-    if (telegramEnabled !== undefined) profile.notificationsEnabled = telegramEnabled;
-    
-    await profile.save();
-
-    res.json({ 
-        success: true, 
-        preferences: {
-            telegramEnabled: profile.notificationsEnabled,
-            telegramChatId: profile.telegramChatId
-        }
-    });
-
-  } catch (error) {
-    console.error('Error updating preferences:', error);
-    res.status(500).json({ success: false, error: 'Server Error' });
-  }
-});
+router.put('/preferences', validate(validators.preferences), updatePreferences);
 
 // @route   POST /api/notifications/test-telegram
 // @desc    Send test Telegram message
-router.post('/test-telegram', async (req, res) => {
-  try {
+router.post('/test-telegram', catchAsync(async (req, res) => {
     const { chatId } = req.body;
     
     if (!chatId) {
-      return res.status(400).json({ success: false, error: 'Chat ID is required' });
+      // Manual validation fallback for this specific check if strict validation not used
+       return res.status(400).json({ success: false, error: 'Chat ID is required' });
     }
 
     if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -141,11 +111,7 @@ router.post('/test-telegram', async (req, res) => {
     const result = await telegramService.sendTestMessage(chatId);
     
     res.json(result);
-  } catch (error) {
-    console.error('Error sending test Telegram:', error);
-    res.status(500).json({ success: false, error: error.message || 'Failed to send test message' });
-  }
-});
+}));
 
 // @route   POST /api/notifications/test
 // @desc    Send test email notification

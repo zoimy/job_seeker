@@ -134,7 +134,7 @@ export class RabotaMdScraper {
           if (title) {
             try {
               const vacancy = {
-                id: this.generateId(title, company, i),
+                id: this.generateId(title, company, i, link),
                 title: title.trim(),
                 company: company || 'Not specified',
                 description: description || '',
@@ -359,8 +359,24 @@ export class RabotaMdScraper {
   /**
    * Generate unique ID for vacancy
    */
-  generateId(title, company, index = 0) {
-    const str = `${title}-${company}-${index}`;
+  generateId(title, company, index, url) {
+    // 1. Use URL as best identifier if available
+    if (url && url.length > 10) {
+        // Simple hash of URL to avoid special chars in ID
+        return this.hashString(url);
+    }
+
+    // 2. Fallback: Title + Company
+    // Note: We intentionally avoid 'index' to ensure the ID is stable 
+    // across multiple scrapes where the order might change.
+    const str = `${title}-${company}`.toLowerCase().replace(/\s+/g, '');
+    return this.hashString(str);
+  }
+
+  /**
+   * Simple hash function
+   */
+  hashString(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
