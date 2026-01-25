@@ -47,7 +47,19 @@ class NotificationScheduler {
             case '24h': cooldownMs = 1000 * 60 * 60 * 24; break;
         }
 
-        return (now - lastScraped) >= cooldownMs;
+        const diff = now - lastScraped;
+        const isDue = diff >= cooldownMs;
+
+        if (!isDue) {
+             const minutesLeft = Math.ceil((cooldownMs - diff) / 60000);
+             if (minutesLeft > 0) {
+                 // Only log if significant wait, to avoid spamming immediate retries logs
+                 // Or log everything for now to help user debug
+                 console.log(`   ⏳ User ${p.userId} (${p.role}) skipped. Freq: ${p.scanFrequency}. Next scan in ~${minutesLeft} mins.`);
+             }
+        }
+
+        return isDue;
       });
 
       console.log(`🔍 Scanner awake. Found ${profiles.length} total profiles, ${profilesToScan.length} due for scan.`);
@@ -101,18 +113,44 @@ class NotificationScheduler {
         let dbVacancy = await Vacancy.findOne({ vacancyId: v.id });
 
         if (dbVacancy) {
-            // Check if THIS user was already notified
-            const alreadyNotified = dbVacancy.notifiedUsers && dbVacancy.notifiedUsers.includes(profile.userId);
+            // Check existing notifications
+            let shouldNotify = true;
+            const now = Date.now();
+            const ONE_MONTH = 1000 * 60 * 60 * 24 * 30;
+
+            // 1. Check legacy array (if strict "never again") - Optional, we can ignore this if we want re-notify
+            // But user said "only through a month". Assuming legacy data is "recent".
+            // Let's migrate legacy: If in notifiedUsers but not in log, assume sent "recently" (skip for now to avoid spam)
+            const inLegacy = dbVacancy.notifiedUsers && dbVacancy.notifiedUsers.includes(profile.userId);
             
-            if (!alreadyNotified) {
+            // 2. Check new log
+            const logEntry = dbVacancy.notificationLog.find(l => l.userId === profile.userId);
+            
+            if (logEntry) {
+                const timeSince = now - new Date(logEntry.sentAt).getTime();
+                if (timeSince < ONE_MONTH) {
+                    shouldNotify = false; // Seen less than a month ago
+                }
+            } else if (inLegacy) {
+                shouldNotify = false; // Legacy suppression (assume valid)
+            }
+            
+            if (shouldNotify) {
                 // Calculate score
                 const score = this.calculateMatchScore(v, profile);
                 
                 if (score >= (profile.minMatchScore || 50)) {
                     matchesToNotify.push({ vacancy: v, matchScore: score });
                     
-                    // Mark user as notified in DB object
-                    dbVacancy.notifiedUsers.push(profile.userId);
+                    // Update Log
+                    if (logEntry) {
+                        logEntry.sentAt = new Date(); // Update timestamp
+                    } else {
+                        dbVacancy.notificationLog.push({ userId: profile.userId, sentAt: new Date() });
+                    }
+                    // Keep legacy sync for safety
+                    if (!inLegacy) dbVacancy.notifiedUsers.push(profile.userId);
+                    
                     await dbVacancy.save();
                 }
             }
@@ -128,7 +166,8 @@ class NotificationScheduler {
                     ...v,
                     vacancyId: v.id,
                     firstSeen: new Date(),
-                    notifiedUsers: [profile.userId]
+                    notifiedUsers: [profile.userId],
+                    notificationLog: [{ userId: profile.userId, sentAt: new Date() }]
                 };
                 
                 // We save immediately to prevent race conditions if other users match same vacancy in next loop?

@@ -360,10 +360,11 @@ export class RabotaMdScraper {
    * Generate unique ID for vacancy
    */
   generateId(title, company, index, url) {
-    // 1. Use URL as best identifier if available
+    // 1. Use clean URL as best identifier if available
     if (url && url.length > 10) {
-        // Simple hash of URL to avoid special chars in ID
-        return this.hashString(url);
+        // Strip query parameters to ensure stability (e.g. ?utm_source=...)
+        const cleanUrl = url.split('?')[0];
+        return this.hashString(cleanUrl);
     }
 
     // 2. Fallback: Title + Company

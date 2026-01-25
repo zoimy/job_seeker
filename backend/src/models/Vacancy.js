@@ -11,7 +11,11 @@ const vacancySchema = new mongoose.Schema({
     default: Date.now
   },
   notifiedUsers: [{
-    type: String // List of User IDs who have been notified
+    type: String // Legacy: List of User IDs (Simple strings)
+  }],
+  notificationLog: [{
+    userId: { type: String, required: true },
+    sentAt: { type: Date, default: Date.now }
   }],
   notifiedAt: {
     type: Date
