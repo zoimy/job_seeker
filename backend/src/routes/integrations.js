@@ -69,10 +69,7 @@ router.get('/', catchAsync(async (req, res) => {
       integrations
     });
 
-    res.json({ 
-      success: true,
-      integrations
-    });
+
 }));
 
 // @route   PUT /api/integrations/telegram
@@ -108,15 +105,7 @@ router.put('/telegram', catchAsync(async (req, res) => {
       }
     });
 
-    res.json({ 
-      success: true,
-      integration: {
-        id: 'telegram',
-        status: status || 'connected',
-        connectionInfo,
-        settings
-      }
-    });
+
 }));
 
 // @route   PUT /api/integrations/email
