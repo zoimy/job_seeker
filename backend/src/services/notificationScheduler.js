@@ -11,11 +11,11 @@ class NotificationScheduler {
   }
 
   start() {
-    // Run every hour
-    schedule.schedule('0 * * * *', () => {
+    // Run every 2 minutes (closest to "instant")
+    schedule.schedule('*\/2 * * * *', () => {
       this.checkNewVacancies();
     });
-    console.log('⏰ Notification scheduler started (hourly)');
+    console.log('⏰ Notification scheduler started (every 2 mins)');
     
     // Initial run
     this.checkNewVacancies();
@@ -26,8 +26,6 @@ class NotificationScheduler {
     this.isRunning = true;
     
     try {
-      console.log('🔍 Checking for new vacancies for all users...');
-      
       // 1. Fetch all active profiles
       const profiles = await Profile.find({ 
           notificationsEnabled: true,
@@ -35,9 +33,26 @@ class NotificationScheduler {
           userId: { $exists: true }
       });
       
-      console.log(`👤 Found ${profiles.length} active profiles to process`);
+      const now = Date.now();
+      const profilesToScan = profiles.filter(p => {
+        // Calculate cooldown
+        const lastScraped = p.lastScraped ? new Date(p.lastScraped).getTime() : 0;
+        let cooldownMs = 1000 * 60 * 60 * 6; // Default 6h
 
-      if (profiles.length === 0) {
+        switch(p.scanFrequency) {
+            case 'instant': cooldownMs = 1000 * 60 * 2; break; // 2 min
+            case '5min': cooldownMs = 1000 * 60 * 5; break;
+            case '1h': cooldownMs = 1000 * 60 * 60; break;
+            case '6h': cooldownMs = 1000 * 60 * 60 * 6; break;
+            case '24h': cooldownMs = 1000 * 60 * 60 * 24; break;
+        }
+
+        return (now - lastScraped) >= cooldownMs;
+      });
+
+      console.log(`🔍 Scanner awake. Found ${profiles.length} total profiles, ${profilesToScan.length} due for scan.`);
+
+      if (profilesToScan.length === 0) {
           this.isRunning = false;
           return;
       }
@@ -47,8 +62,8 @@ class NotificationScheduler {
         await telegramService.initialize(process.env.TELEGRAM_BOT_TOKEN);
       }
 
-      // 2. Process each profile independently (Sequential to avoid overload)
-      for (const profile of profiles) {
+      // 2. Process only due profiles
+      for (const profile of profilesToScan) {
           try {
               await this.processProfile(profile);
               // Small delay between users to be polite to the target site and logs

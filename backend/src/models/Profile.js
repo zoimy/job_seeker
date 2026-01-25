@@ -61,6 +61,11 @@ const profileSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  scanFrequency: {
+    type: String,
+    enum: ['instant', '5min', '1h', '6h', '24h'],
+    default: '6h'
+  },
   telegramChatId: {
     type: String,
     default: ''

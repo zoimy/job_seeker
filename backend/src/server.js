@@ -26,7 +26,12 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 validateEnv();
 
 // Connect to MongoDB
+// Connect to MongoDB
 connectDB();
+
+// Start Notification Scheduler
+import { notificationScheduler } from './services/notificationScheduler.js';
+notificationScheduler.start();
 
 const app = express();
 

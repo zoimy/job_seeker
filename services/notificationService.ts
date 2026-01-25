@@ -35,13 +35,24 @@ class NotificationServiceClient {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      return await response.json();
+      const data = await response.json();
+      const prefs = data.preferences || {};
+      
+      return {
+        enabled: prefs.telegramEnabled ?? false, // Map backend 'telegramEnabled' to frontend 'enabled'
+        email: prefs.email || '',
+        emailPassword: '', // Backend doesn't return this for security
+        emailService: 'gmail',
+        telegramChatId: prefs.telegramChatId || '',
+        minMatchScore: prefs.minMatchScore || 70, 
+        frequency: prefs.scanFrequency || '6h' 
+      };
     } catch (error) {
       console.error('Error fetching notification preferences:', error);
       return {
         enabled: false,
         email: '',
-        minMatchScore: 70, // Raised from 60 to 70 for better relevance
+        minMatchScore: 70,
         frequency: '6h'
       };
     }
@@ -52,13 +63,21 @@ class NotificationServiceClient {
    */
   async updatePreferences(preferences: NotificationPreferences): Promise<boolean> {
     try {
+      // Map frontend 'enabled' to backend 'telegramEnabled'
+      const payload = {
+        telegramEnabled: preferences.enabled,
+        telegramChatId: preferences.telegramChatId,
+        scanFrequency: preferences.frequency
+        // Send other fields if backend supported them, but currently it mainly syncs these two
+      };
+
       const response = await fetch(`${BACKEND_URL}/api/notifications/preferences`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': getUserId(),
         },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {

@@ -40,18 +40,19 @@ router.get('/preferences', identifyUser, catchAsync(async (req, res) => {
 
     res.json({
       preferences: {
-        telegramEnabled: profile.notificationsEnabled !== false, // Default to true if undefined
-        emailEnabled: false, // Not implemented yet
-        browserEnabled: false, // Not implemented yet
-        minMatchScore: 60, // Could be stored in DB too
-        telegramChatId: profile.telegramChatId || ''
+        telegramEnabled: profile.notificationsEnabled !== false,
+        emailEnabled: false,
+        browserEnabled: false,
+        minMatchScore: 60,
+        telegramChatId: profile.telegramChatId || '',
+        scanFrequency: profile.scanFrequency || '6h'
       }
     });
 }));
 
 // Handle preference updates (shared logic)
 const updatePreferences = catchAsync(async (req, res) => {
-    const { telegramEnabled, telegramChatId } = req.body;
+    const { telegramEnabled, telegramChatId, scanFrequency } = req.body;
     
     // Check if we need to send a test message
     const isTest = req.query.test === 'true';
@@ -71,6 +72,7 @@ const updatePreferences = catchAsync(async (req, res) => {
     // Update fields
     if (telegramChatId !== undefined) profile.telegramChatId = telegramChatId;
     if (telegramEnabled !== undefined) profile.notificationsEnabled = telegramEnabled;
+    if (scanFrequency !== undefined) profile.scanFrequency = scanFrequency;
     
     await profile.save();
 
@@ -92,7 +94,8 @@ const updatePreferences = catchAsync(async (req, res) => {
         success: true, 
         preferences: {
             telegramEnabled: profile.notificationsEnabled,
-            telegramChatId: profile.telegramChatId
+            telegramChatId: profile.telegramChatId,
+            scanFrequency: profile.scanFrequency
         }
     });
 });
