@@ -50,10 +50,11 @@ export const corsOptions = {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    // In production, use strict origin
+    // In production, use strict origin but allow multiple if comma-separated
     if (process.env.NODE_ENV === 'production') {
-      const allowedOrigin = process.env.FRONTEND_URL;
-      if (origin === allowedOrigin) {
+      const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map(url => url.trim());
+      // Support wildcard * explicitly, or exact match
+      if (process.env.FRONTEND_URL === '*' || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'));
