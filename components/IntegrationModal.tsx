@@ -9,15 +9,16 @@ interface Props {
   service: ServiceType;
   mode: 'connect' | 'settings';
   initialSettings?: IntegrationSettings;
+  currentChatId?: string; // Add prop for passing current Telegram Chat ID
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }
 
-const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSettings, onClose, onSave }) => {
+const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSettings, currentChatId, onClose, onSave }) => {
   const [loading, setLoading] = useState(false);
   
   // Connection Form State
-  const [chatId, setChatId] = useState(''); // For Telegram
+  const [chatId, setChatId] = useState(currentChatId || ''); // For Telegram - prefilled with current value
   const [webhookUrl, setWebhookUrl] = useState(''); // For Slack, Discord, Webhook
   const [email, setEmail] = useState(''); // For Email
   
@@ -35,13 +36,20 @@ const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSetti
 
   useEffect(() => {
     if (initialSettings) setSettings(initialSettings);
+    // Prefill chatId if available
+    if (currentChatId) {
+      setChatId(currentChatId);
+    }
     // Reset form state when modal opens
     if (isOpen) {
-      setChatId('');
-      setWebhookUrl('');
-      setEmail('');
+      // Don't reset if we're in settings mode - keep the current Telegram ID
+      if (mode === 'connect' && !currentChatId) {
+        setChatId('');
+        setWebhookUrl('');
+        setEmail('');
+      }
     }
-  }, [initialSettings, isOpen]);
+  }, [initialSettings, isOpen, mode, currentChatId]);
 
   if (!isOpen) return null;
 
@@ -53,7 +61,9 @@ const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSetti
     // Build payload based on mode and service
     const payload = mode === 'connect' 
       ? { chatId, webhookUrl, email, settings }
-      : { settings };
+      : service === 'telegram' 
+        ? { chatId, settings }  // Include chatId for Telegram in settings mode
+        : { settings };
       
     await onSave(payload);
     setLoading(false);
@@ -133,6 +143,23 @@ const IntegrationModal: React.FC<Props> = ({ isOpen, service, mode, initialSetti
   const renderSettingsContent = () => {
     return (
       <div className="space-y-8">
+        {/* Telegram Chat ID Editor (only in settings mode) */}
+        {service === 'telegram' && (
+          <div className="space-y-3 pb-6 border-b border-white/10">
+            <label className="text-sm font-medium text-gray-300 block ml-1 flex items-center gap-2">
+              <span className="text-blue-400">📱</span> Telegram Chat ID
+            </label>
+            <GlassInput 
+              placeholder="e.g. 655209387" 
+              value={chatId}
+              onChange={(val) => setChatId(val)}
+            />
+            <p className="text-xs text-gray-400 mt-1 pl-1">
+              Update your Chat ID here. Get it from @userinfobot if needed.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-3">
           <label className="text-sm font-medium text-gray-300 block ml-1">Notification Frequency</label>
           <div className="grid grid-cols-3 gap-3">

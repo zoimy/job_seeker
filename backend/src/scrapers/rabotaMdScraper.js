@@ -357,34 +357,34 @@ export class RabotaMdScraper {
   }
   
   /**
-   * Generate unique ID for vacancy
+   * Generate unique ID for vacancy (STABLE across multiple scrapes)
+   * Uses MD5 hash of normalized title + company
    */
   generateId(title, company, index, url) {
-    // 1. Use clean URL as best identifier if available
-    if (url && url.length > 10) {
-        // Strip query parameters to ensure stability (e.g. ?utm_source=...)
-        const cleanUrl = url.split('?')[0];
-        return this.hashString(cleanUrl);
-    }
-
-    // 2. Fallback: Title + Company
-    // Note: We intentionally avoid 'index' to ensure the ID is stable 
-    // across multiple scrapes where the order might change.
-    const str = `${title}-${company}`.toLowerCase().replace(/\s+/g, '');
-    return this.hashString(str);
+    // Use crypto for stable hashing
+    const crypto = require('crypto');
+    
+    // Normalize and combine key fields
+    // We intentionally avoid URL as it may have tracking params
+    const normalizedTitle = (title || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalizedCompany = (company || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    
+    // Create stable identifier
+    const uniqueString = `${normalizedTitle}|${normalizedCompany}`;
+    
+    // Generate MD5 hash (first 16 chars for readability)
+    return crypto.createHash('md5')
+      .update(uniqueString)
+      .digest('hex')
+      .substring(0, 16);
   }
-
+  
   /**
-   * Simple hash function
+   * Legacy - no longer used
    */
   hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
+    const crypto = require('crypto');
+    return crypto.createHash('md5').update(str).digest('hex').substring(0, 16);
   }
 }
 

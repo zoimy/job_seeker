@@ -43,7 +43,7 @@ router.get('/preferences', identifyUser, catchAsync(async (req, res) => {
         telegramEnabled: profile.notificationsEnabled !== false,
         emailEnabled: false,
         browserEnabled: false,
-        minMatchScore: 60,
+        minMatchScore: profile.minMatchScore || 60,  // FIX: Load from database, not hardcoded
         telegramChatId: profile.telegramChatId || '',
         scanFrequency: profile.scanFrequency || '6h'
       }
@@ -52,7 +52,7 @@ router.get('/preferences', identifyUser, catchAsync(async (req, res) => {
 
 // Handle preference updates (shared logic)
 const updatePreferences = catchAsync(async (req, res) => {
-    const { telegramEnabled, telegramChatId, scanFrequency } = req.body;
+    const { telegramEnabled, telegramChatId, scanFrequency, minMatchScore } = req.body;  // FIX: Extract minMatchScore
     
     // Check if we need to send a test message
     const isTest = req.query.test === 'true';
@@ -73,6 +73,7 @@ const updatePreferences = catchAsync(async (req, res) => {
     if (telegramChatId !== undefined) profile.telegramChatId = telegramChatId;
     if (telegramEnabled !== undefined) profile.notificationsEnabled = telegramEnabled;
     if (scanFrequency !== undefined) profile.scanFrequency = scanFrequency;
+    if (minMatchScore !== undefined) profile.minMatchScore = minMatchScore;  // FIX: Save minMatchScore
     
     await profile.save();
 
@@ -95,7 +96,8 @@ const updatePreferences = catchAsync(async (req, res) => {
         preferences: {
             telegramEnabled: profile.notificationsEnabled,
             telegramChatId: profile.telegramChatId,
-            scanFrequency: profile.scanFrequency
+            scanFrequency: profile.scanFrequency,
+            minMatchScore: profile.minMatchScore  // FIX: Return saved minMatchScore
         }
     });
 });

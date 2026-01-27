@@ -48,9 +48,11 @@ export function NotificationSettings() {
     const success = await notificationServiceClient.updatePreferences(preferences);
 
     if (success) {
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
+      setMessage({ type: 'success', text: '✅ Settings saved successfully!' });
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
     } else {
-      setMessage({ type: 'error', text: 'Failed to save settings' });
+      setMessage({ type: 'error', text: '❌ Failed to save settings. Please try again.' });
     }
 
     setSaving(false);
@@ -203,19 +205,21 @@ export function NotificationSettings() {
              <Settings size={18} className="text-purple-400" /> Preferences
            </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-             <GlassSelect
+            <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+              <GlassSelect
                 label="Scan Frequency"
                 value={preferences.frequency}
                 onChange={(value) => setPreferences({ ...preferences, frequency: value as any })}
                 options={[
-                  { value: 'instant', label: '⚡ Instant (Every 2 mins)' },
-                  { value: '5min', label: 'Every 5 Minutes' },
-                  { value: '1h', label: 'Every Hour' },
-                  { value: '6h', label: 'Every 6 Hours' },
-                  { value: '24h', label: 'Once Daily (9 AM)' }
+                  { value: 'instant', label: '⚡ Instant (Every 2 min)' },
+                  { value: '1h', label: '🕐 Hourly' },
+                  { value: '6h', label: '⏰ Every 6 hours' },
+                  { value: '24h', label: '📅 Daily' }
                 ]}
               />
+              <p className="text-xs text-gray-400">
+                How often should we check for new vacancies? Instant checks every 2 minutes.
+              </p>
 
               <div className="space-y-3 pt-1">
                 <label className="block text-sm font-medium text-gray-300 flex justify-between">

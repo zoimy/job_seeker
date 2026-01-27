@@ -13,13 +13,18 @@ class NotificationScheduler {
 
   start() {
     // Run every 2 minutes (closest to "instant")
-    schedule.schedule('*\/2 * * * *', () => {
-      this.checkNewVacancies();
+    // Use overlappingSchedule: false to prevent missed execution warnings
+    schedule.schedule('*/2 * * * *', () => {
+      if (!this.isRunning) {
+        this.checkNewVacancies();
+      } else {
+        console.log('⏭️  Skipping scan - previous scan still running');
+      }
     });
     console.log('⏰ Notification scheduler started (every 2 mins)');
     
-    // Initial run
-    this.checkNewVacancies();
+    // Initial run (async, non-blocking)
+    setTimeout(() => this.checkNewVacancies(), 1000);
   }
 
   async checkNewVacancies() {

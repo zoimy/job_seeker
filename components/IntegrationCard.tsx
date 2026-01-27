@@ -64,6 +64,12 @@ const IntegrationCard: React.FC<Props> = ({ integration, icon, onConnect, onDisc
       {/* Connected Info (if active) */}
       {status === 'connected' && (
         <div className="mb-6 p-4 bg-black/30 rounded-2xl border border-white/5 text-xs text-gray-300 space-y-2 backdrop-blur-sm">
+          {connectionInfo?.chatId && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-400">Chat ID</span>
+               <span className="text-emerald-300 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{connectionInfo.chatId}</span>
+             </div>
+          )}
           {connectionInfo?.username && (
              <div className="flex justify-between items-center">
                <span className="text-gray-400">Account</span>

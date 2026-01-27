@@ -67,7 +67,8 @@ class NotificationServiceClient {
       const payload = {
         telegramEnabled: preferences.enabled,
         telegramChatId: preferences.telegramChatId,
-        scanFrequency: preferences.frequency
+        scanFrequency: preferences.frequency,
+        minMatchScore: preferences.minMatchScore  // FIX: Add minMatchScore to save it
         // Send other fields if backend supported them, but currently it mainly syncs these two
       };
 

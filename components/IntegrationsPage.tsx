@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Integration, ServiceType } from '../types';
+import { Integration, ServiceType, UserProfile } from '../types';
 import IntegrationCard from './IntegrationCard';
 import IntegrationModal from './IntegrationModal';
 import { GlassCard } from './GlassUI';
 import { MessageCircle, Mail, Hash, Gamepad2, MessageSquare, Camera, Webhook, Zap, BellRing, Link2 } from 'lucide-react';
 import { integrationService } from '../services/integrationService';
+import { storageService } from '../services/storageService';
 
 const IntegrationsPage: React.FC = () => {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalState, setModalState] = useState<{ isOpen: boolean; service: ServiceType | null; mode: 'connect' | 'settings' }>({
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [modalState, setModalState] = useState<{ isOpen: boolean; service: ServiceType | null; mode: 'connect' | 'settings'; currentChatId?: string }>({
     isOpen: false,
     service: null,
-    mode: 'connect'
+    mode: 'connect',
+    currentChatId: undefined
   });
 
-  // Load integrations from backend
+  // Load integrations and profile from backend
   useEffect(() => {
     loadIntegrations();
+    loadProfile();
   }, []);
 
   const loadIntegrations = async () => {
@@ -25,6 +29,13 @@ const IntegrationsPage: React.FC = () => {
     const data = await integrationService.getIntegrations();
     setIntegrations(data);
     setLoading(false);
+  };
+
+  const loadProfile = async () => {
+   const userProfile = await storageService.getUserProfile();
+    if (userProfile) {
+      setProfile(userProfile);
+    }
   };
 
   const getIcon = (id: string) => {
@@ -43,11 +54,13 @@ const IntegrationsPage: React.FC = () => {
   };
 
   const handleConnect = (service: ServiceType) => {
-    setModalState({ isOpen: true, service, mode: 'connect' });
+    const currentChatId = service === 'telegram' ? profile?.telegramChatId : undefined;
+    setModalState({ isOpen: true, service, mode: 'connect', currentChatId });
   };
 
   const handleSettings = (service: ServiceType) => {
-    setModalState({ isOpen: true, service, mode: 'settings' });
+    const currentChatId = service === 'telegram' ? profile?.telegramChatId : undefined;
+    setModalState({ isOpen: true, service, mode: 'settings', currentChatId });
   };
 
   const handleDisconnect = async (serviceId: ServiceType) => {
@@ -91,6 +104,13 @@ const IntegrationsPage: React.FC = () => {
           connectionInfo: { chatId: data.chatId },
           settings: data.settings || { frequency: 'instant', format: 'compact' }
         });
+        
+        // Also update profile with new Chat ID
+        if (result?.success && profile) {
+          const updatedProfile = { ...profile, telegramChatId: data.chatId };
+          await storageService.saveUserProfile(updatedProfile);
+          setProfile(updatedProfile);
+        }
       } else if (['slack', 'discord', 'webhook'].includes(serviceId) && data.webhookUrl) {
         result = await integrationService.updateIntegration(serviceId, {
           status: 'connected',
@@ -105,10 +125,23 @@ const IntegrationsPage: React.FC = () => {
         });
       }
     } else {
-      // Handle settings update
-      result = await integrationService.updateIntegration(modalState.service, {
-        settings: data.settings
-      });
+      // Handle settings update (including Chat ID update)
+      if (modalState.service === 'telegram' && data.chatId && profile) {
+        // Update profile with new Chat ID
+        const updatedProfile = { ...profile, telegramChatId: data.chatId };
+        await storageService.saveUserProfile(updatedProfile);
+        setProfile(updatedProfile);
+        
+        // Update integration connectionInfo
+        result = await integrationService.updateIntegration(modalState.service, {
+          connectionInfo: { chatId: data.chatId },
+          settings: data.settings
+        });
+      } else {
+        result = await integrationService.updateIntegration(modalState.service, {
+          settings: data.settings
+        });
+      }
     }
     
     if (result?.success) {
@@ -189,6 +222,7 @@ const IntegrationsPage: React.FC = () => {
           service={modalState.service}
           mode={modalState.mode}
           initialSettings={integrations.find(i => i.id === modalState.service)?.settings}
+          currentChatId={modalState.currentChatId}
           onClose={() => setModalState({ ...modalState, isOpen: false })}
           onSave={handleSaveModal}
         />

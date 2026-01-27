@@ -5,7 +5,8 @@ const CACHE_KEY = 'vacancy_matches_cache';
 const CACHE_TIMESTAMP_KEY = 'vacancy_matches_timestamp';
 const CACHE_DURATION = 1000 * 60 * 30; // 30 minutes
 
-export const DEFAULT_PROFILE: UserProfile = {
+// Return a fresh copy each time to avoid React state mutation issues
+export const getDefaultProfile = (): UserProfile => ({
   name: "",
   role: "",
   skills: [],
@@ -19,7 +20,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   education: EducationLevel.ANY,
   bio: "",
   searchPeriodDays: 7
-};
+});
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -55,25 +56,60 @@ export const storageService = {
     }
   },
 
-  getUserProfile: async (): Promise<UserProfile | null> => {
-    try {
-      const response = await fetch(`${BASE_URL}/api/profile`, {
+  getUserProfile: async (retryCount = 2): Promise<UserProfile | null> => {
+    for (let attempt = 0; attempt <= retryCount; attempt++) {
+      try {
+        const response = await fetch(`${BASE_URL}/api/profile`, {
           headers: {
             'x-user-id': getUserId(),
+          },
+          // Add timeout to prevent hanging
+          signal: AbortSignal.timeout(10000) // 10 second timeout
+        });
+        
+        // If response is not OK, check the status
+        if (!response.ok) {
+          // 404 means no profile exists yet - this is expected for new users
+          if (response.status === 404) {
+            console.log('No profile found - user needs to create one');
+            return null;
           }
-      });
-      if (!response.ok) return null;
-      
-      const data = await response.json();
-      return data.profile || null;
-    } catch (error) {
-      console.error('Failed to load profile from backend:', error);
-      return null;
+          // Other errors (401, 403, 500, etc.) - retry
+          if (attempt < retryCount) {
+            console.warn(`Profile fetch failed with status ${response.status}, retrying... (${attempt + 1}/${retryCount})`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1))); // Exponential backoff
+            continue;
+          }
+          return null;
+        }
+        
+        const data = await response.json();
+        
+        // Successfully fetched profile
+        if (data.profile) {
+          console.log('✅ Profile loaded successfully:', data.profile.name || 'Unnamed');
+          return data.profile;
+        }
+        
+        // Profile is explicitly null in response
+        return null;
+        
+      } catch (error: any) {
+        console.error(`Failed to load profile (attempt ${attempt + 1}/${retryCount + 1}):`, error.message);
+        
+        // If this is not the last attempt, retry
+        if (attempt < retryCount) {
+          console.log(`Retrying in ${(attempt + 1)} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+        
+        // Last attempt failed - return null
+        console.error('❌ All profile fetch attempts failed');
+        return null;
+      }
     }
-  },
-  
-  getDefaultProfile: (): UserProfile => {
-      return DEFAULT_PROFILE;
+    return null;
   },
 
   deleteAccount: async (): Promise<boolean> => {
@@ -131,5 +167,9 @@ export const storageService = {
   clearCache: (): void => {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_TIMESTAMP_KEY);
+  },
+
+  getDefaultProfile: (): UserProfile => {
+    return getDefaultProfile();
   }
 };

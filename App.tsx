@@ -21,7 +21,7 @@ const App: React.FC = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   
   // Initial User State
-  const [userProfile, setUserProfile] = useState<UserProfile>(storageService.getDefaultProfile());
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => storageService.getDefaultProfile());
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   // Check if user is new on mount
@@ -42,20 +42,42 @@ const App: React.FC = () => {
 
     const initApp = async () => {
       setLoading(true);
+      console.log('🔄 Initializing app and loading profile...');
       
-      // 1. Load Profile
-      const storedProfile = await storageService.getUserProfile();
-      const profileToUse = storedProfile || storageService.getDefaultProfile();
-      setUserProfile(profileToUse);
-      setIsProfileLoaded(true);
+      try {
+        // 1. Load Profile with retry logic
+        const storedProfile = await storageService.getUserProfile();
+        
+        if (storedProfile) {
+          console.log('✅ Profile loaded from backend:', storedProfile.name || 'Unnamed');
+          setUserProfile(storedProfile);
+          setIsProfileLoaded(true);
+        } else {
+          console.warn('⚠️ No profile found - using default profile');
+          // Only set default if explicitly no profile exists
+          // Don't overwrite existing profile if API failed
+          setUserProfile(prev => {
+            // If we already have a profile with data, keep it
+            if (prev.name || prev.role || prev.skills.length > 0) {
+              console.log('📌 Keeping existing profile in state (API returned null but profile exists in state)');
+              return prev;
+            }
+            return storageService.getDefaultProfile();
+          });
+          setIsProfileLoaded(false);
+        }
 
-      // 2. Load cached matches if exist
-      const cachedMatches = await storageService.getCachedMatches();
-      if (cachedMatches && cachedMatches.length > 0) {
-        setMatches(cachedMatches);
+        // 2. Load cached matches if exist
+        const cachedMatches = await storageService.getCachedMatches();
+        if (cachedMatches && cachedMatches.length > 0) {
+          setMatches(cachedMatches);
+        }
+      } catch (error) {
+        console.error('❌ Error in initApp:', error);
+        // Don't reset profile on error - keep what we have
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initApp();
@@ -112,11 +134,15 @@ const App: React.FC = () => {
         <OnboardingContainer
           onComplete={async () => {
             setShowOnboarding(false);
+            console.log('✅ Onboarding completed, reloading profile...');
             // Reload profile after onboarding but DO NOT scan
             const storedProfile = await storageService.getUserProfile();
             if (storedProfile) {
+              console.log('✅ Profile reloaded after onboarding:', storedProfile.name);
               setUserProfile(storedProfile);
               setIsProfileLoaded(true);
+            } else {
+              console.error('⚠️ Failed to load profile after onboarding');
             }
           }}
         />
@@ -248,6 +274,7 @@ const App: React.FC = () => {
                   setLoading(true);
                   const success = await storageService.deleteAccount();
                   if (success) {
+                    console.log('🗑️ Account deleted, resetting to onboarding');
                     setShowOnboarding(true);
                     setUserProfile(storageService.getDefaultProfile());
                     setCurrentView('dashboard');
