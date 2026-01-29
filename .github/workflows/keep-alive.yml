@@ -1,29 +1,19 @@
 name: Keep Backend Alive
 
 on:
-schedule:
-# Run every 10 minutes to prevent Render free tier from sleeping
-- cron: '*/10 * * * *'
-workflow_dispatch: # Allow manual trigger for testing
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
 
 jobs:
-ping:
-runs-on: ubuntu-latest
-steps:
-- name: Ping Backend Health Endpoint
-run: |
-echo "Pinging backend at $(date)"
-response=$(curl -s -o /dev/null -w "%{http_code}" https://job-tracker-backend-latest.onrender.com/health || echo "failed")
-
-if [ "$response" = "200" ]; then
-echo "✅ Backend is alive (HTTP $response)"
-elif [ "$response" = "failed" ]; then
-echo "❌ Failed to reach backend"
-exit 1
-else
-echo "⚠️ Backend returned HTTP $response"
-exit 1
-fi
-
-- name: Log Timestamp
-run: echo "Keep-alive ping completed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          echo "Pinging backend"
+          curl -f https://job-tracker-backend-latest.onrender.com/health || exit 1
+          echo "Backend is alive"
+      
+      - name: Log Timestamp
+        run: echo "Completed at $(date)"
