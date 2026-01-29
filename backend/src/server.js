@@ -60,9 +60,22 @@ app.use('/api/scrape', scrapeRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/integrations', integrationRoutes);
 
-// Health check endpoint (for Fly.io)
+// Health check endpoint (for monitoring and keep-alive)
 app.get('/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
+  // Check if this is a keep-alive ping (from GitHub Actions or monitoring service)
+  const userAgent = req.get('user-agent') || '';
+  const isKeepAlivePing = userAgent.includes('curl') || userAgent.includes('github-actions');
+  
+  // Log keep-alive pings (but not too verbose)
+  if (isKeepAlivePing) {
+    console.log(`[Keep-Alive] Ping received at ${new Date().toISOString()}`);
+  }
+  
+  // Get notification scheduler status
+  const schedulerStatus = notificationScheduler.isRunning ? 'running' : 'stopped';
+  const lastCheck = notificationScheduler.lastCheckTime || null;
   
   // If DB is down, return 503 Service Unavailable
   const status = dbStatus === 'connected' ? 200 : 503;
@@ -71,7 +84,12 @@ app.get('/health', (req, res) => {
     status: dbStatus === 'connected' ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV,
-    database: dbStatus
+    database: dbStatus,
+    scheduler: {
+      status: schedulerStatus,
+      lastCheck: lastCheck
+    },
+    uptime: process.uptime()
   });
 });
 

@@ -9,6 +9,7 @@ class NotificationScheduler {
   constructor() {
     this.scraper = new RabotaMdScraper();
     this.isRunning = false;
+    this.lastCheckTime = null;
   }
 
   start() {
@@ -30,6 +31,7 @@ class NotificationScheduler {
   async checkNewVacancies() {
     if (this.isRunning) return;
     this.isRunning = true;
+    this.lastCheckTime = new Date().toISOString();
     
     try {
       // 1. Fetch all active profiles
