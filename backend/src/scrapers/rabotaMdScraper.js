@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import crypto from 'crypto';
 
 /**
  * Scraper for rabota.md website
@@ -362,7 +363,6 @@ export class RabotaMdScraper {
    */
   generateId(title, company, index, url) {
     // Use crypto for stable hashing
-    const crypto = require('crypto');
     
     // Normalize and combine key fields
     // We intentionally avoid URL as it may have tracking params
@@ -383,7 +383,6 @@ export class RabotaMdScraper {
    * Legacy - no longer used
    */
   hashString(str) {
-    const crypto = require('crypto');
     return crypto.createHash('md5').update(str).digest('hex').substring(0, 16);
   }
 }
