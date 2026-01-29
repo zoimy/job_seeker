@@ -11,9 +11,9 @@ jobs:
     steps:
       - name: Ping Backend Health Endpoint
         run: |
-          echo "Pinging backend"
-          curl -f https://job-tracker-backend-latest.onrender.com/health || exit 1
-          echo "Backend is alive"
+          echo "Pinging backend at https://job-seeker-p8zi.onrender.com/health"
+          curl -f https://job-seeker-p8zi.onrender.com/health || exit 1
+          echo "✅ Backend is alive"
       
       - name: Log Timestamp
         run: echo "Completed at $(date)"
